@@ -6,33 +6,32 @@ export async function POST(req: Request) {
   try {
     const { prompt, width, height, variations } = await req.json()
 
+    console.log("[v0] Generate image request:", { prompt: prompt?.slice(0, 80), width, height, variations })
+
     if (!prompt) {
       return Response.json({ error: "Prompt is required" }, { status: 400 })
     }
 
     const numVariations = Math.min(Math.max(variations || 1, 1), 4)
     const aspectInfo =
-      width && height ? ` The image should have a ${width}x${height} aspect ratio.` : ""
+      width && height ? ` The image dimensions should be ${width}x${height} pixels.` : ""
 
     const images: { base64: string; mediaType: string }[] = []
 
-    // Generate each variation sequentially (Gemini handles one image per call)
     for (let i = 0; i < numVariations; i++) {
-      const variationPrompt =
-        numVariations > 1
-          ? `${prompt}${aspectInfo} (variation ${i + 1}, unique creative interpretation)`
-          : `${prompt}${aspectInfo}`
+      const variationSuffix =
+        numVariations > 1 ? ` (variation ${i + 1}, unique creative interpretation)` : ""
+      const fullPrompt = `Generate an image: ${prompt}${aspectInfo}${variationSuffix}`
+
+      console.log(`[v0] Generating variation ${i + 1}...`)
 
       try {
         const result = await generateText({
-          model: "google/gemini-2.5-flash-image",
-          prompt: variationPrompt,
-          providerOptions: {
-            google: {
-              responseModalities: ["TEXT", "IMAGE"],
-            },
-          },
+          model: "google/gemini-3-pro-image-preview",
+          prompt: fullPrompt,
         })
+
+        console.log(`[v0] Variation ${i + 1} result - files:`, result.files?.length ?? 0, "text:", result.text?.slice(0, 100))
 
         if (result.files) {
           for (const file of result.files) {
@@ -45,10 +44,11 @@ export async function POST(req: Request) {
           }
         }
       } catch (err) {
-        console.error(`[v0] Variation ${i + 1} failed:`, err)
-        // Continue generating other variations even if one fails
+        console.error(`[v0] Variation ${i + 1} failed:`, err instanceof Error ? err.message : err)
       }
     }
+
+    console.log(`[v0] Total images generated: ${images.length}`)
 
     if (images.length === 0) {
       return Response.json(
@@ -59,9 +59,9 @@ export async function POST(req: Request) {
 
     return Response.json({ images })
   } catch (err) {
-    console.error("[v0] Image generation error:", err)
+    console.error("[v0] Image generation top-level error:", err instanceof Error ? err.message : err)
     return Response.json(
-      { error: "Failed to generate image. Please try again." },
+      { error: err instanceof Error ? err.message : "Failed to generate image. Please try again." },
       { status: 500 }
     )
   }
