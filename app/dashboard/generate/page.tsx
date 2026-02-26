@@ -159,19 +159,28 @@ function GenerateResult({
   images: string[]; loading: boolean; prompt: string
 }) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [errorImages, setErrorImages] = useState<Set<number>>(new Set())
 
   async function handleDownload(url: string, index: number) {
     try {
-      const response = await fetch(url)
-      const blob = await response.blob()
-      const blobUrl = URL.createObjectURL(blob)
+      // If it's already a blob URL we can use it directly,
+      // otherwise fetch it first.
+      let blobUrl = url
+      if (!url.startsWith("blob:")) {
+        const response = await fetch(url)
+        const blob = await response.blob()
+        blobUrl = URL.createObjectURL(blob)
+      }
       const a = document.createElement("a")
       a.href = blobUrl
       a.download = `thumbcraft-${Date.now()}-${index + 1}.png`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(blobUrl)
+      // Only revoke if we created the blob URL ourselves
+      if (!url.startsWith("blob:")) {
+        URL.revokeObjectURL(blobUrl)
+      }
       toast.success("Image downloaded!")
     } catch {
       toast.error("Failed to download image")
@@ -186,7 +195,7 @@ function GenerateResult({
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-foreground">Generating your thumbnails...</p>
-          <p className="mt-1 text-xs text-muted-foreground">This may take a few seconds</p>
+          <p className="mt-1 text-xs text-muted-foreground">AI is creating your images. This can take 15-60 seconds.</p>
         </div>
       </div>
     )
@@ -211,13 +220,23 @@ function GenerateResult({
       <div className={`grid gap-4 ${images.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
         {images.map((url, i) => (
           <div key={i} className="group relative overflow-hidden rounded-xl border border-border bg-card">
-            <img
-              src={url}
-              alt={`Generated thumbnail ${i + 1}: ${prompt}`}
-              className="w-full cursor-pointer object-cover transition-transform hover:scale-[1.02]"
-              crossOrigin="anonymous"
-              onClick={() => setSelectedImage(url)}
-            />
+            {errorImages.has(i) ? (
+              <div className="flex aspect-video flex-col items-center justify-center gap-2 bg-card p-8">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-xs text-muted-foreground">Failed to load image</p>
+              </div>
+            ) : (
+              <img
+                src={url}
+                alt={`Generated thumbnail ${i + 1}: ${prompt}`}
+                className="w-full cursor-pointer object-cover transition-transform hover:scale-[1.02]"
+                crossOrigin="anonymous"
+                onClick={() => setSelectedImage(url)}
+                onError={() =>
+                  setErrorImages((prev) => new Set(prev).add(i))
+                }
+              />
+            )}
             <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">
               <span className="text-xs text-white">Variation {i + 1}</span>
               <button
@@ -268,6 +287,30 @@ export default function GeneratePage() {
   const height = size === "custom" ? customHeight : (selectedSize?.height ?? 1024)
   const platform = selectedSize?.platform ?? "Custom"
 
+  const fetchImage = useCallback(async (url: string): Promise<string> => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 120000) // 2 min timeout
+
+    try {
+      const response = await fetch(url, { signal: controller.signal })
+      clearTimeout(timeout)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const blob = await response.blob()
+      if (blob.size === 0) {
+        throw new Error("Empty response")
+      }
+
+      return URL.createObjectURL(blob)
+    } catch (err) {
+      clearTimeout(timeout)
+      throw err
+    }
+  }, [])
+
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
       toast.error("Please enter a prompt")
@@ -290,11 +333,24 @@ export default function GeneratePage() {
         platform,
       })
 
-      const images: string[] = []
+      // Build URLs with unique seeds
+      const urls: string[] = []
       for (let i = 0; i < variations; i++) {
         const seed = Math.floor(Math.random() * 999999) + 1
         const url = generatePollinationsUrl(enhancedPrompt, width, height, seed)
-        images.push(url)
+        urls.push(url)
+      }
+
+      // Fetch images -- Pollinations generates on the fly so the HTTP request
+      // blocks until the image is ready. We convert to blob URLs for reliable display.
+      const settled = await Promise.allSettled(urls.map((u) => fetchImage(u)))
+      const loadedImages = settled
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+        .map((r) => r.value)
+
+      if (loadedImages.length === 0) {
+        toast.error("Image generation failed. Please try again.")
+        return
       }
 
       // Deduct credits
@@ -306,7 +362,7 @@ export default function GeneratePage() {
         id: Math.random().toString(36).substring(2) + Date.now().toString(36),
         userId: user?.id ?? "",
         prompt: prompt.trim(),
-        imageUrls: images,
+        imageUrls: loadedImages,
         options: {
           style,
           size,
@@ -323,14 +379,19 @@ export default function GeneratePage() {
         createdAt: new Date().toISOString(),
       })
 
-      setGeneratedImages(images)
-      toast.success(`Generated ${variations} thumbnail${variations > 1 ? "s" : ""}!`)
+      setGeneratedImages(loadedImages)
+
+      if (loadedImages.length < urls.length) {
+        toast.success(`Generated ${loadedImages.length} of ${urls.length} thumbnails (some failed).`)
+      } else {
+        toast.success(`Generated ${loadedImages.length} thumbnail${loadedImages.length > 1 ? "s" : ""}!`)
+      }
     } catch {
-      toast.error("Failed to generate thumbnails")
+      toast.error("Failed to generate thumbnails. Please try again.")
     } finally {
       setLoading(false)
     }
-  }, [prompt, style, size, width, height, colorScheme, textOverlay, variations, platform, creditCost, hasEnoughCredits, user, updateCredits, addGeneration])
+  }, [prompt, style, size, width, height, colorScheme, textOverlay, variations, platform, creditCost, hasEnoughCredits, user, updateCredits, addGeneration, fetchImage])
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
