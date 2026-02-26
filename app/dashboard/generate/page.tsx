@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { useGenerations } from "@/lib/generation-context"
 import { ART_STYLES, SIZE_PRESETS, COLOR_SCHEMES, CREDITS_PER_IMAGE } from "@/lib/constants"
-import { buildEnhancedPrompt, generatePollinationsUrl } from "@/lib/prompt-builder"
+import { buildEnhancedPrompt } from "@/lib/prompt-builder"
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Camera, Palette, Box, Sparkles, LayoutGrid, Droplets, Film, Zap,
@@ -287,30 +287,6 @@ export default function GeneratePage() {
   const height = size === "custom" ? customHeight : (selectedSize?.height ?? 1024)
   const platform = selectedSize?.platform ?? "Custom"
 
-  const fetchImage = useCallback(async (url: string): Promise<string> => {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 120000) // 2 min timeout
-
-    try {
-      const response = await fetch(url, { signal: controller.signal })
-      clearTimeout(timeout)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      const blob = await response.blob()
-      if (blob.size === 0) {
-        throw new Error("Empty response")
-      }
-
-      return URL.createObjectURL(blob)
-    } catch (err) {
-      clearTimeout(timeout)
-      throw err
-    }
-  }, [])
-
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
       toast.error("Please enter a prompt")
@@ -333,25 +309,42 @@ export default function GeneratePage() {
         platform,
       })
 
-      // Build URLs with unique seeds
-      const urls: string[] = []
-      for (let i = 0; i < variations; i++) {
-        const seed = Math.floor(Math.random() * 999999) + 1
-        const url = generatePollinationsUrl(enhancedPrompt, width, height, seed)
-        urls.push(url)
+      // Call our server-side API route which uses the Vercel AI Gateway
+      const response = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: enhancedPrompt,
+          width,
+          height,
+          variations,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Server error (${response.status})`)
       }
 
-      // Fetch images -- Pollinations generates on the fly so the HTTP request
-      // blocks until the image is ready. We convert to blob URLs for reliable display.
-      const settled = await Promise.allSettled(urls.map((u) => fetchImage(u)))
-      const loadedImages = settled
-        .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
-        .map((r) => r.value)
+      const data = await response.json()
 
-      if (loadedImages.length === 0) {
-        toast.error("Image generation failed. Please try again.")
-        return
+      if (!data.images || data.images.length === 0) {
+        throw new Error("No images returned")
       }
+
+      // Convert base64 images to blob URLs for display
+      const blobUrls = data.images.map(
+        (img: { base64: string; mediaType: string }) => {
+          const byteCharacters = atob(img.base64)
+          const byteNumbers = new Array(byteCharacters.length)
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i)
+          }
+          const byteArray = new Uint8Array(byteNumbers)
+          const blob = new Blob([byteArray], { type: img.mediaType })
+          return URL.createObjectURL(blob)
+        }
+      )
 
       // Deduct credits
       const newCredits = (user?.credits ?? 0) - creditCost
@@ -362,7 +355,7 @@ export default function GeneratePage() {
         id: Math.random().toString(36).substring(2) + Date.now().toString(36),
         userId: user?.id ?? "",
         prompt: prompt.trim(),
-        imageUrls: loadedImages,
+        imageUrls: blobUrls,
         options: {
           style,
           size,
@@ -372,26 +365,24 @@ export default function GeneratePage() {
           colorScheme,
           textOverlay,
           variations,
-          model: "flux",
+          model: "gemini",
         },
         creditsCost: creditCost,
         status: "completed",
         createdAt: new Date().toISOString(),
       })
 
-      setGeneratedImages(loadedImages)
-
-      if (loadedImages.length < urls.length) {
-        toast.success(`Generated ${loadedImages.length} of ${urls.length} thumbnails (some failed).`)
-      } else {
-        toast.success(`Generated ${loadedImages.length} thumbnail${loadedImages.length > 1 ? "s" : ""}!`)
-      }
-    } catch {
-      toast.error("Failed to generate thumbnails. Please try again.")
+      setGeneratedImages(blobUrls)
+      toast.success(
+        `Generated ${blobUrls.length} thumbnail${blobUrls.length > 1 ? "s" : ""}!`
+      )
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to generate thumbnails"
+      toast.error(message)
     } finally {
       setLoading(false)
     }
-  }, [prompt, style, size, width, height, colorScheme, textOverlay, variations, platform, creditCost, hasEnoughCredits, user, updateCredits, addGeneration, fetchImage])
+  }, [prompt, style, size, width, height, colorScheme, textOverlay, variations, platform, creditCost, hasEnoughCredits, user, updateCredits, addGeneration])
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
