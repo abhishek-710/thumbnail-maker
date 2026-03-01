@@ -283,7 +283,7 @@ export default function GeneratePage() {
           height,
           variations,
           userId: user?.id,
-          creditsCost,
+          creditsCost: creditCost,
           options: {
             style,
             size,
