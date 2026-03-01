@@ -309,10 +309,9 @@ export default function GeneratePage() {
         throw new Error("No images returned")
       }
 
-      // Convert base64 images to data URLs for display
-      const imageUrls = data.images.map((img: { base64: string; mediaType: string }) => 
-        `data:${img.mediaType};base64,${img.base64}`
-      )
+      // Extract image URLs from API response
+      // API returns { dataUrl: "data:image/png;base64,..." } format
+      const imageUrls = data.images.map((img: { dataUrl: string }) => img.dataUrl)
 
       // Deduct credits
       const newCredits = (user?.credits ?? 0) - creditCost
