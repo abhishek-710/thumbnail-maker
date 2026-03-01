@@ -41,7 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar - Desktop */}
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-card lg:flex lg:flex-col">
+      <aside className="hidden h-screen w-64 shrink-0 sticky top-0 border-r border-border bg-card lg:flex lg:flex-col">
         <div className="flex h-16 items-center gap-2 border-b border-border px-6">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
