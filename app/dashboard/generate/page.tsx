@@ -309,7 +309,7 @@ export default function GeneratePage() {
         platform,
       })
 
-      // Call our server-side API route which uses the Vercel AI Gateway
+      // Call our server-side API route which uses the Infip API
       const response = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -332,19 +332,8 @@ export default function GeneratePage() {
         throw new Error("No images returned")
       }
 
-      // Convert base64 images to blob URLs for display
-      const blobUrls = data.images.map(
-        (img: { base64: string; mediaType: string }) => {
-          const byteCharacters = atob(img.base64)
-          const byteNumbers = new Array(byteCharacters.length)
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i)
-          }
-          const byteArray = new Uint8Array(byteNumbers)
-          const blob = new Blob([byteArray], { type: img.mediaType })
-          return URL.createObjectURL(blob)
-        }
-      )
+      // Infip returns direct URLs, use them directly
+      const imageUrls = data.images.map((img: { url: string }) => img.url)
 
       // Deduct credits
       const newCredits = (user?.credits ?? 0) - creditCost
@@ -355,7 +344,7 @@ export default function GeneratePage() {
         id: Math.random().toString(36).substring(2) + Date.now().toString(36),
         userId: user?.id ?? "",
         prompt: prompt.trim(),
-        imageUrls: blobUrls,
+        imageUrls: imageUrls,
         options: {
           style,
           size,
@@ -365,16 +354,16 @@ export default function GeneratePage() {
           colorScheme,
           textOverlay,
           variations,
-          model: "gemini",
+          model: "infip",
         },
         creditsCost: creditCost,
         status: "completed",
         createdAt: new Date().toISOString(),
       })
 
-      setGeneratedImages(blobUrls)
+      setGeneratedImages(imageUrls)
       toast.success(
-        `Generated ${blobUrls.length} thumbnail${blobUrls.length > 1 ? "s" : ""}!`
+        `Generated ${imageUrls.length} thumbnail${imageUrls.length > 1 ? "s" : ""}!`
       )
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to generate thumbnails"
