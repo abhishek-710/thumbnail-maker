@@ -1,5 +1,42 @@
 export const maxDuration = 120
 
+async function pollForCompletion(taskId: string, pollUrl: string, maxAttempts: number = 60): Promise<string[]> {
+  const apiKey = process.env.INFIP_API_KEY
+  if (!apiKey) throw new Error("INFIP_API_KEY not set")
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const pollResponse = await fetch(pollUrl, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    })
+
+    if (!pollResponse.ok) {
+      const errorData = await pollResponse.json().catch(() => ({}))
+      throw new Error(`Poll failed: ${errorData.message || pollResponse.statusText}`)
+    }
+
+    const pollData = await pollResponse.json()
+
+    if (pollData.status === "completed") {
+      if (!pollData.data || !Array.isArray(pollData.data)) {
+        throw new Error("No images in completed response")
+      }
+      return pollData.data.map((item: { url: string }) => item.url)
+    }
+
+    if (pollData.status === "failed" || pollData.status === "error") {
+      throw new Error(`Task failed: ${pollData.error?.message || "Unknown error"}`)
+    }
+
+    // Wait before next poll (exponential backoff)
+    const delayMs = Math.min(1000 + attempt * 500, 5000)
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+  }
+
+  throw new Error("Image generation timed out after 2 minutes")
+}
+
 export async function POST(req: Request) {
   try {
     const { prompt, width, height, variations } = await req.json()
@@ -18,8 +55,8 @@ export async function POST(req: Request) {
     const numVariations = Math.min(Math.max(variations || 1, 1), 4)
     const size = width && height ? `${width}x${height}` : "1024x1024"
 
-    // Request images from Infip API
-    const response = await fetch("https://api.infip.pro/v1/images/generations", {
+    // Step 1: Submit generation request
+    const submissionResponse = await fetch("https://api.infip.pro/v1/images/generations", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.INFIP_API_KEY}`,
@@ -34,33 +71,47 @@ export async function POST(req: Request) {
       }),
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
+    if (!submissionResponse.ok) {
+      const errorData = await submissionResponse.json().catch(() => ({}))
       const errorMsg =
         errorData.error?.message ||
         errorData.message ||
-        `HTTP ${response.status}`
+        `HTTP ${submissionResponse.status}`
       return Response.json(
-        { error: `Image generation failed: ${errorMsg}` },
-        { status: response.status }
+        { error: `Submission failed: ${errorMsg}` },
+        { status: submissionResponse.status }
       )
     }
 
-    const data = await response.json()
+    const submissionData = await submissionResponse.json()
 
-    if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
-      return Response.json(
-        { error: "No images generated. Please try again." },
-        { status: 500 }
-      )
+    // Infip returns either immediate results or a task_id for async processing
+    if (submissionData.data && Array.isArray(submissionData.data)) {
+      // Immediate result (shouldn't happen with z-image-turbo but handle it)
+      const images = submissionData.data.map((item: { url: string }) => ({
+        url: item.url,
+      }))
+      return Response.json({ images })
     }
 
-    // Convert Infip response format to our format
-    const images = data.data.map((item: { url: string }) => ({
-      url: item.url,
-    }))
+    // Step 2: Handle async processing with task_id
+    if (submissionData.task_id && submissionData.poll_url) {
+      const imageUrls = await pollForCompletion(
+        submissionData.task_id,
+        submissionData.poll_url
+      )
 
-    return Response.json({ images })
+      const images = imageUrls.map((url: string) => ({
+        url: url,
+      }))
+
+      return Response.json({ images })
+    }
+
+    return Response.json(
+      { error: "Unexpected response format from API" },
+      { status: 500 }
+    )
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     console.error("[v0] Image generation error:", errMsg)

@@ -10,17 +10,11 @@ export const ART_STYLES = [
   { value: "neon-glow", label: "Neon Glow", promptModifier: "neon glow, cyberpunk, bright neon colors, dark background, electric", icon: "Zap" },
 ] as const
 
-// Size presets by platform
+// Size presets by platform (Infip supports: 1024x1024, 1792x1024, 1024x1792)
 export const SIZE_PRESETS = [
-  { value: "youtube", label: "YouTube", width: 1280, height: 720, platform: "YouTube" },
-  { value: "instagram-square", label: "Instagram Square", width: 1080, height: 1080, platform: "Instagram" },
-  { value: "instagram-story", label: "Instagram Story", width: 1080, height: 1920, platform: "Instagram" },
-  { value: "twitter", label: "Twitter/X", width: 1600, height: 900, platform: "Twitter" },
-  { value: "facebook", label: "Facebook Cover", width: 1200, height: 630, platform: "Facebook" },
-  { value: "twitch", label: "Twitch", width: 1280, height: 720, platform: "Twitch" },
-  { value: "tiktok", label: "TikTok", width: 1080, height: 1920, platform: "TikTok" },
-  { value: "linkedin", label: "LinkedIn", width: 1200, height: 627, platform: "LinkedIn" },
-  { value: "custom", label: "Custom Size", width: 1024, height: 1024, platform: "Custom" },
+  { value: "square", label: "Square (1024x1024)", width: 1024, height: 1024, platform: "Universal" },
+  { value: "landscape", label: "Landscape (1792x1024)", width: 1792, height: 1024, platform: "Landscape" },
+  { value: "portrait", label: "Portrait (1024x1792)", width: 1024, height: 1792, platform: "Portrait" },
 ] as const
 
 // Color schemes
