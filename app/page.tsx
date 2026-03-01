@@ -14,7 +14,7 @@ function Navbar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
             <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold text-foreground">ThumbCraft</span>
+          <span className="text-xl font-bold text-foreground">ThumbBoost</span>
         </Link>
         <div className="hidden items-center gap-8 md:flex">
           <a href="#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Features</a>
@@ -111,22 +111,22 @@ function Features() {
     {
       icon: Image,
       title: "AI-Powered Generation",
-      description: "Describe your vision and our AI creates stunning thumbnails instantly using the latest FLUX model.",
-    },
-    {
-      icon: Layers,
-      title: "Multi-Platform Support",
-      description: "Optimized presets for YouTube, Instagram, TikTok, Twitter, Facebook, Twitch, LinkedIn and more.",
+      description: "Describe your vision and our AI creates stunning thumbnails instantly using advanced image generation.",
     },
     {
       icon: Palette,
-      title: "Full Customization",
-      description: "Choose art styles, color schemes, text overlays, and generate up to 4 variations at once.",
+      title: "8 Unique Art Styles",
+      description: "Choose from Realistic, Cartoon, 3D Render, Anime, Flat Design, Watercolor, Cinematic, and Neon Glow.",
+    },
+    {
+      icon: Layers,
+      title: "Multiple Size Options",
+      description: "Generate in Square (1024x1024), Landscape (1792x1024), or Portrait (1024x1792) formats.",
     },
     {
       icon: Zap,
-      title: "Lightning Fast",
-      description: "Generate thumbnails in seconds, not minutes. Download in full HD resolution immediately.",
+      title: "Color Schemes & Text",
+      description: "Apply vibrant, dark, pastel, or neon color schemes. Add custom text overlays to your thumbnails.",
     },
     {
       icon: Clock,
@@ -136,7 +136,7 @@ function Features() {
     {
       icon: CreditCard,
       title: "Flexible Credits",
-      description: "Start with 50 free credits. Buy more only when you need them with affordable plans.",
+      description: "Start with 50 free credits. Each generation costs 5 credits. Buy more when you need them.",
     },
   ]
 
@@ -285,7 +285,7 @@ function Footer() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold text-foreground">ThumbCraft</span>
+          <span className="text-lg font-bold text-foreground">ThumbBoost</span>
         </div>
         <p className="text-sm text-muted-foreground">
           Built with AI. Create thumbnails that stand out.

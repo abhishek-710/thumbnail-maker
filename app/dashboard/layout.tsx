@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold text-foreground">ThumbCraft</span>
+            <span className="text-lg font-bold text-foreground">ThumbBoost</span>
           </Link>
         </div>
         <nav className="flex-1 px-3 py-4">
@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                   <Sparkles className="h-4 w-4 text-primary-foreground" />
                 </div>
-                <span className="text-lg font-bold text-foreground">ThumbCraft</span>
+                <span className="text-lg font-bold text-foreground">ThumbBoost</span>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-muted-foreground" aria-label="Close menu">
                 <X className="h-5 w-5" />

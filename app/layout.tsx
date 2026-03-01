@@ -1,15 +1,17 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
 import { GenerationProvider } from '@/lib/generation-context'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
+const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const metadata: Metadata = {
-  title: 'ThumbCraft AI - Create Stunning Thumbnails with AI',
+  title: 'ThumbBoost - Create Stunning Thumbnails with AI',
   description: 'Generate professional thumbnails for YouTube, Instagram, TikTok and more using AI. Free credits to get started.',
   generator: 'v0.app',
   icons: {
@@ -41,23 +43,30 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <GenerationProvider>
-            {children}
-          </GenerationProvider>
-        </AuthProvider>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: '#13131f',
-              border: '1px solid #1e1e30',
-              color: '#f1f1f3',
-            },
-          }}
-        />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <GenerationProvider>
+              {children}
+            </GenerationProvider>
+          </AuthProvider>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                color: 'var(--foreground)',
+              },
+            }}
+          />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

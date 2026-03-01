@@ -54,7 +54,7 @@ export default function SignupPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold text-foreground">ThumbCraft</span>
+            <span className="text-2xl font-bold text-foreground">ThumbBoost</span>
           </Link>
           <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
           <p className="mt-1 text-sm text-muted-foreground">Start creating AI-powered thumbnails</p>
