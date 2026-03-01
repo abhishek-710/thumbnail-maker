@@ -45,15 +45,13 @@ function StyleSelector({ value, onChange }: { value: string; onChange: (v: strin
 }
 
 function SizeSelector({
-  value, onChange, customWidth, customHeight, onCustomWidthChange, onCustomHeightChange,
+  value, onChange,
 }: {
   value: string; onChange: (v: string) => void
-  customWidth: number; customHeight: number
-  onCustomWidthChange: (v: number) => void; onCustomHeightChange: (v: number) => void
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-foreground">Size / Platform</label>
+      <label className="mb-2 block text-sm font-medium text-foreground">Image Size</label>
       <div className="grid grid-cols-3 gap-2">
         {SIZE_PRESETS.map((preset) => {
           const isActive = value === preset.value
@@ -74,26 +72,6 @@ function SizeSelector({
           )
         })}
       </div>
-      {value === "custom" && (
-        <div className="mt-3 flex gap-3">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs text-muted-foreground">Width</label>
-            <input
-              type="number" min={256} max={2048} value={customWidth}
-              onChange={(e) => onCustomWidthChange(Number(e.target.value))}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="mb-1 block text-xs text-muted-foreground">Height</label>
-            <input
-              type="number" min={256} max={2048} value={customHeight}
-              onChange={(e) => onCustomHeightChange(Number(e.target.value))}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -270,9 +248,7 @@ export default function GeneratePage() {
 
   const [prompt, setPrompt] = useState("")
   const [style, setStyle] = useState("cinematic")
-  const [size, setSize] = useState("youtube")
-  const [customWidth, setCustomWidth] = useState(1024)
-  const [customHeight, setCustomHeight] = useState(1024)
+  const [size, setSize] = useState("square")
   const [colorScheme, setColorScheme] = useState("vibrant")
   const [textOverlay, setTextOverlay] = useState("")
   const [variations, setVariations] = useState(1)
@@ -282,10 +258,10 @@ export default function GeneratePage() {
   const creditCost = variations * CREDITS_PER_IMAGE
   const hasEnoughCredits = (user?.credits ?? 0) >= creditCost
 
-  const selectedSize = SIZE_PRESETS.find((p) => p.value === size)
-  const width = size === "custom" ? customWidth : (selectedSize?.width ?? 1024)
-  const height = size === "custom" ? customHeight : (selectedSize?.height ?? 1024)
-  const platform = selectedSize?.platform ?? "Custom"
+  const selectedSize = SIZE_PRESETS.find((p) => p.value === size) || SIZE_PRESETS[0]
+  const width = selectedSize.width
+  const height = selectedSize.height
+  const platform = selectedSize.platform
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -399,8 +375,6 @@ export default function GeneratePage() {
             <StyleSelector value={style} onChange={setStyle} />
             <SizeSelector
               value={size} onChange={setSize}
-              customWidth={customWidth} customHeight={customHeight}
-              onCustomWidthChange={setCustomWidth} onCustomHeightChange={setCustomHeight}
             />
             <ColorSchemeSelector value={colorScheme} onChange={setColorScheme} />
 
