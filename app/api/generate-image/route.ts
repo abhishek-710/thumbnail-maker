@@ -71,7 +71,8 @@ export async function POST(req: Request) {
       }),
     })
 
-    if (!submissionResponse.ok) {
+    // Accept 200-202 for successful submission (202 is async acceptance)
+    if (submissionResponse.status < 200 || submissionResponse.status > 202) {
       const errorData = await submissionResponse.json().catch(() => ({}))
       const errorMsg =
         errorData.error?.message ||

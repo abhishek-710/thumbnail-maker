@@ -62,8 +62,8 @@ async function testInfipAPI() {
     console.log('\n[TEST] Submission Response Status:', submissionResult.status);
     console.log('[TEST] Submission Response:', JSON.stringify(submissionResult.body, null, 2));
 
-    if (submissionResult.status !== 200 && submissionResult.status !== 201) {
-      console.log('[TEST] ERROR: Expected 200/201 status, got:', submissionResult.status);
+    if (submissionResult.status < 200 || submissionResult.status > 202) {
+      console.log('[TEST] ERROR: Expected 200-202 status, got:', submissionResult.status);
       return;
     }
 
