@@ -40,11 +40,9 @@ function CreditBalance({ credits }: { credits: number }) {
 function PricingCard({
   plan,
   onPurchase,
-  purchasing,
 }: {
   plan: typeof PRICING_PLANS[number]
   onPurchase: () => void
-  purchasing: boolean
 }) {
   return (
     <div
@@ -80,15 +78,14 @@ function PricingCard({
       </ul>
       <button
         onClick={onPurchase}
-        disabled={purchasing}
         className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
           plan.popular
             ? "bg-primary text-primary-foreground hover:bg-[#7c3aed]"
             : "border border-border text-foreground hover:bg-surface-hover hover:border-primary/30"
-        } disabled:opacity-50`}
+        }`}
       >
         <CreditCard className="h-4 w-4" />
-        {purchasing ? "Processing..." : "Purchase"}
+        Purchase
       </button>
     </div>
   )
@@ -149,44 +146,14 @@ function TransactionHistory({ transactions }: { transactions: Transaction[] }) {
 }
 
 export default function CreditsPage() {
-  const { user, updateCredits } = useAuth()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [purchasing, setPurchasing] = useState<string | null>(null)
+  const { user } = useAuth()
+  const [transactions] = useState<Transaction[]>([])
 
-  async function handlePurchase(planId: string) {
-    const plan = PRICING_PLANS.find((p) => p.id === planId)
-    if (!plan) return
-
-    setPurchasing(planId)
-
-    // Simulate Stripe checkout (in production, this would redirect to Stripe)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Add credits
-      const newCredits = (user?.credits ?? 0) + plan.credits
-      updateCredits(newCredits)
-
-      // Record transaction
-      const transaction: Transaction = {
-        id: Math.random().toString(36).substring(2),
-        userId: user?.id ?? "",
-        planId: plan.id,
-        planName: plan.name,
-        creditsAdded: plan.credits,
-        amountPaid: plan.priceInCents,
-        currency: "usd",
-        status: "completed",
-        createdAt: new Date().toISOString(),
-      }
-      setTransactions((prev) => [transaction, ...prev])
-
-      toast.success(`${plan.credits} credits added to your account!`)
-    } catch {
-      toast.error("Purchase failed. Please try again.")
-    } finally {
-      setPurchasing(null)
-    }
+  function handlePurchase(planId: string) {
+    toast.info("Checkout coming soon! Payment integration is under development.", {
+      description: "We're working on integrating secure payments. Stay tuned!",
+      duration: 4000,
+    })
   }
 
   return (
@@ -230,7 +197,6 @@ export default function CreditsPage() {
               key={plan.id}
               plan={plan}
               onPurchase={() => handlePurchase(plan.id)}
-              purchasing={purchasing === plan.id}
             />
           ))}
         </div>
