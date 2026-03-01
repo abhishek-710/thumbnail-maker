@@ -4,12 +4,16 @@ import { User, Generation } from '@/lib/models'
 export const maxDuration = 120
 
 async function fetchImageAsBase64(imageUrl: string): Promise<string> {
+  console.log('[v0] Fetching image from URL:', imageUrl)
   const response = await fetch(imageUrl)
   if (!response.ok) {
+    console.log('[v0] Failed to fetch image, status:', response.status, response.statusText)
     throw new Error(`Failed to fetch image: ${response.statusText}`)
   }
   const buffer = await response.arrayBuffer()
+  console.log('[v0] Image buffer size:', buffer.byteLength)
   const base64 = Buffer.from(buffer).toString('base64')
+  console.log('[v0] Base64 length:', base64.length)
   return base64
 }
 
@@ -60,14 +64,20 @@ export async function POST(req: Request) {
       throw new Error('No images in response')
     }
 
+    console.log('[v0] Infip response data:', JSON.stringify(infipData.data, null, 2))
+
     // Convert URLs to base64 to bypass CORS
     const imageUrls = infipData.data.map((item: { url: string }) => item.url)
+    console.log('[v0] Extracted image URLs:', imageUrls)
+    
     const base64Images = await Promise.all(
       imageUrls.map(async (url) => ({
         base64: await fetchImageAsBase64(url),
         mediaType: 'image/png',
       }))
     )
+    
+    console.log('[v0] Successfully converted', base64Images.length, 'images to base64')
 
     // Save to MongoDB if userId provided
     if (userId) {
