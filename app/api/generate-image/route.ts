@@ -1,5 +1,16 @@
 export const maxDuration = 120
 
+// Fetch image from URL and convert to base64 to bypass CORS
+async function fetchImageAsBase64(imageUrl: string): Promise<string> {
+  const response = await fetch(imageUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.statusText}`)
+  }
+  const buffer = await response.arrayBuffer()
+  const base64 = Buffer.from(buffer).toString('base64')
+  return base64
+}
+
 async function pollForCompletion(taskId: string, pollUrl: string, maxAttempts: number = 60): Promise<string[]> {
   const apiKey = process.env.INFIP_API_KEY
   if (!apiKey) throw new Error("INFIP_API_KEY not set")
@@ -89,10 +100,14 @@ export async function POST(req: Request) {
     // Infip returns either immediate results or a task_id for async processing
     if (submissionData.data && Array.isArray(submissionData.data)) {
       // Immediate result (shouldn't happen with z-image-turbo but handle it)
-      const images = submissionData.data.map((item: { url: string }) => ({
-        url: item.url,
-      }))
-      return Response.json({ images })
+      const imageUrls = submissionData.data.map((item: { url: string }) => item.url)
+      const base64Images = await Promise.all(
+        imageUrls.map(async (url) => ({
+          base64: await fetchImageAsBase64(url),
+          mediaType: 'image/png'
+        }))
+      )
+      return Response.json({ images: base64Images })
     }
 
     // Step 2: Handle async processing with task_id
@@ -102,11 +117,14 @@ export async function POST(req: Request) {
         submissionData.poll_url
       )
 
-      const images = imageUrls.map((url: string) => ({
-        url: url,
-      }))
+      const base64Images = await Promise.all(
+        imageUrls.map(async (url) => ({
+          base64: await fetchImageAsBase64(url),
+          mediaType: 'image/png'
+        }))
+      )
 
-      return Response.json({ images })
+      return Response.json({ images: base64Images })
     }
 
     return Response.json(

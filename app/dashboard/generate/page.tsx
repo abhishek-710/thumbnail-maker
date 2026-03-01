@@ -141,24 +141,12 @@ function GenerateResult({
 
   async function handleDownload(url: string, index: number) {
     try {
-      // If it's already a blob URL we can use it directly,
-      // otherwise fetch it first.
-      let blobUrl = url
-      if (!url.startsWith("blob:")) {
-        const response = await fetch(url)
-        const blob = await response.blob()
-        blobUrl = URL.createObjectURL(blob)
-      }
       const a = document.createElement("a")
-      a.href = blobUrl
+      a.href = url
       a.download = `thumbcraft-${Date.now()}-${index + 1}.png`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      // Only revoke if we created the blob URL ourselves
-      if (!url.startsWith("blob:")) {
-        URL.revokeObjectURL(blobUrl)
-      }
       toast.success("Image downloaded!")
     } catch {
       toast.error("Failed to download image")
@@ -308,8 +296,10 @@ export default function GeneratePage() {
         throw new Error("No images returned")
       }
 
-      // Infip returns direct URLs, use them directly
-      const imageUrls = data.images.map((img: { url: string }) => img.url)
+      // Convert base64 images to data URLs for display
+      const imageUrls = data.images.map((img: { base64: string; mediaType: string }) => 
+        `data:${img.mediaType};base64,${img.base64}`
+      )
 
       // Deduct credits
       const newCredits = (user?.credits ?? 0) - creditCost
