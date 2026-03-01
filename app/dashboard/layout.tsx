@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Sparkles, Wand2, Clock, CreditCard, LogOut, Menu, X, Coins } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 
@@ -158,7 +159,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {navItems.find((n) => pathname === n.href)?.label || "Dashboard"}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link
               href="/dashboard/credits"
               className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
@@ -166,6 +167,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Coins className="h-4 w-4" />
               <span>{user?.credits ?? 0} credits</span>
             </Link>
+            <ThemeToggle />
             <div className="hidden items-center gap-2 md:flex">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
                 {user?.name?.charAt(0).toUpperCase()}

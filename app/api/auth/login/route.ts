@@ -12,12 +12,12 @@ export async function POST(req: Request) {
 
     await connectDB()
 
-    const user = await User.findOne({ email }).select('+password')
+    const user = await User.findOne({ email })
     if (!user) {
       return Response.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password)
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
     if (!isPasswordValid) {
       return Response.json({ error: 'Invalid email or password' }, { status: 401 })
     }
