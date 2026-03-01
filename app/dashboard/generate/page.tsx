@@ -282,6 +282,19 @@ export default function GeneratePage() {
           width,
           height,
           variations,
+          userId: user?.id,
+          creditsCost,
+          options: {
+            style,
+            size,
+            width,
+            height,
+            platform,
+            colorScheme,
+            textOverlay,
+            variations,
+            model: "infip",
+          },
         }),
       })
 

@@ -16,22 +16,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-// In-memory user store for demo (simulates MongoDB)
-interface StoredUser {
-  id: string
-  name: string
-  email: string
-  password: string
-  credits: number
-  createdAt: string
-}
-
-let usersDb: StoredUser[] = []
-
-function generateId() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36)
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
@@ -39,82 +23,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for existing session
-    const savedToken = typeof window !== "undefined" ? sessionStorage.getItem("thumbcraft_token") : null
-    const savedUser = typeof window !== "undefined" ? sessionStorage.getItem("thumbcraft_user") : null
+    const savedToken = typeof window !== "undefined" ? localStorage.getItem("thumbcraft_token") : null
+    const savedUser = typeof window !== "undefined" ? localStorage.getItem("thumbcraft_user") : null
     if (savedToken && savedUser) {
       try {
         setToken(savedToken)
         setUser(JSON.parse(savedUser))
       } catch {
-        sessionStorage.removeItem("thumbcraft_token")
-        sessionStorage.removeItem("thumbcraft_user")
+        localStorage.removeItem("thumbcraft_token")
+        localStorage.removeItem("thumbcraft_user")
       }
     }
     setLoading(false)
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const found = usersDb.find((u) => u.email === email.toLowerCase())
-    if (!found || found.password !== password) {
-      throw new Error("Invalid email or password")
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Login failed")
     }
+
+    const data = await response.json()
     const userObj: User = {
-      id: found.id,
-      name: found.name,
-      email: found.email,
-      credits: found.credits,
-      createdAt: found.createdAt,
+      id: data.user.id,
+      name: email.split("@")[0],
+      email: data.user.email,
+      credits: data.user.credits,
+      createdAt: new Date().toISOString(),
     }
-    const fakeToken = "jwt_" + generateId()
+    const fakeToken = data.user.id
+
     setUser(userObj)
     setToken(fakeToken)
-    sessionStorage.setItem("thumbcraft_token", fakeToken)
-    sessionStorage.setItem("thumbcraft_user", JSON.stringify(userObj))
+    localStorage.setItem("thumbcraft_token", fakeToken)
+    localStorage.setItem("thumbcraft_user", JSON.stringify(userObj))
   }, [])
 
   const signup = useCallback(async (name: string, email: string, password: string) => {
-    const exists = usersDb.find((u) => u.email === email.toLowerCase())
-    if (exists) {
-      throw new Error("An account with this email already exists")
+    const response = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Signup failed")
     }
-    const newUser: StoredUser = {
-      id: generateId(),
-      name,
-      email: email.toLowerCase(),
-      password,
-      credits: 50,
+
+    const data = await response.json()
+    const userObj: User = {
+      id: data.user.id,
+      name: data.user.email.split("@")[0],
+      email: data.user.email,
+      credits: data.user.credits,
       createdAt: new Date().toISOString(),
     }
-    usersDb.push(newUser)
-    const userObj: User = {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      credits: newUser.credits,
-      createdAt: newUser.createdAt,
-    }
-    const fakeToken = "jwt_" + generateId()
+    const fakeToken = data.user.id
+
     setUser(userObj)
     setToken(fakeToken)
-    sessionStorage.setItem("thumbcraft_token", fakeToken)
-    sessionStorage.setItem("thumbcraft_user", JSON.stringify(userObj))
+    localStorage.setItem("thumbcraft_token", fakeToken)
+    localStorage.setItem("thumbcraft_user", JSON.stringify(userObj))
   }, [])
 
   const logout = useCallback(() => {
     setUser(null)
     setToken(null)
-    sessionStorage.removeItem("thumbcraft_token")
-    sessionStorage.removeItem("thumbcraft_user")
+    localStorage.removeItem("thumbcraft_token")
+    localStorage.removeItem("thumbcraft_user")
   }, [])
 
   const updateCredits = useCallback((newAmount: number) => {
     setUser((prev) => {
       if (!prev) return prev
       const updated = { ...prev, credits: newAmount }
-      sessionStorage.setItem("thumbcraft_user", JSON.stringify(updated))
-      // Update in-memory DB too
-      const dbUser = usersDb.find((u) => u.id === prev.id)
-      if (dbUser) dbUser.credits = newAmount
+      localStorage.setItem("thumbcraft_user", JSON.stringify(updated))
       return updated
     })
   }, [])
